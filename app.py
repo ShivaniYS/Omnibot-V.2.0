@@ -658,15 +658,6 @@ def render_sidebar():
         
         st.divider()
         
-        # Model Settings
-        st.subheader("Model Settings")
-        
-        # Assistant Mode
-        mode = st.selectbox(
-            "Choose Your Assistant Mode",
-            ["Brainy Buddy", "DocuMind", "CodeCraft", "Research Agent"],
-            index=0
-        )
         
         # Model Selection
         available_models = ModelRegistry.get_available_models()
@@ -700,23 +691,7 @@ def render_sidebar():
         else:
             st.warning("Add API keys to enable models")
         
-        # API Key Input (collapsible)
-        with st.expander("🔑 API Keys Configuration"):
-            groq_key = st.text_input("Groq API Key", 
-                                    value=st.session_state.api_keys.get('GROQ_API_KEY', ''),
-                                    type="password")
-            
-            openai_key = st.text_input("OpenAI API Key", 
-                                      value=st.session_state.api_keys.get('OPENAI_API_KEY', ''),
-                                      type="password")
-            
-            if groq_key != st.session_state.api_keys.get('GROQ_API_KEY'):
-                st.session_state.api_keys['GROQ_API_KEY'] = groq_key
-            
-            if openai_key != st.session_state.api_keys.get('OPENAI_API_KEY'):
-                st.session_state.api_keys['OPENAI_API_KEY'] = openai_key
         
-        st.divider()
         
         # System Status
         st.subheader("System Status")
