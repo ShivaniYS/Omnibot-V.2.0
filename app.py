@@ -27,9 +27,8 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.retrievers import BM25Retriever
 from langchain_classic.retrievers import EnsembleRetriever
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import (
-    PyPDFLoader, TextLoader, DocxLoader, CSVLoader, WebBaseLoader
-)
+from langchain_community.document_loaders import PyPDFLoader, TextLoader, DocxLoader, CSVLoader
+from langchain_community.document_loaders.web_base import WebBaseLoader
 
 # Multi-Agent Framework
 from langgraph.graph import StateGraph, END
