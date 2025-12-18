@@ -30,7 +30,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 # Import each loader individually from their specific modules
 from langchain_community.document_loaders.pdf import PyPDFLoader
 from langchain_community.document_loaders.text import TextLoader
-from langchain_community.document_loaders.word_document import DocxLoader
 from langchain_community.document_loaders.csv_loader import CSVLoader
 from langchain_community.document_loaders.web_base import WebBaseLoader
 
