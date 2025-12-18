@@ -1038,3 +1038,204 @@ def main():
                             for doc in all_docs:
                                 kg_manager.build_from_text(doc.page_content, doc.metadata.get('source', ''))
                             st.success(f"Graph now has {len(st.session_state.knowledge_graph.nodes())} entities")
+        
+        with col2:
+            # KG Stats
+            if len(st.session_state.knowledge_graph.nodes()) > 0:
+                st.subheader("Graph Statistics")
+                
+                stats = {
+                    "Total Entities": len(st.session_state.knowledge_graph.nodes()),
+                    "Total Relationships": len(st.session_state.knowledge_graph.edges()),
+                    "Density": f"{nx.density(st.session_state.knowledge_graph):.4f}",
+                    "Avg Degree": f"{np.mean([d for _, d in st.session_state.knowledge_graph.degree()]):.2f}"
+                }
+                
+                for key, value in stats.items():
+                    st.metric(key, value)
+                
+                # Visualize
+                if st.button("Visualize Graph"):
+                    fig = kg_manager.visualize_graph()
+                    if fig:
+                        st.plotly_chart(fig, use_container_width=True)
+                
+                # Export
+                if st.button("Export Graph Data"):
+                    graph_data = {
+                        "nodes": list(st.session_state.knowledge_graph.nodes()),
+                        "edges": list(st.session_state.knowledge_graph.edges(data=True))
+                    }
+                    st.json(graph_data, expanded=False)
+            else:
+                st.info("No knowledge graph data yet. Add text or documents to build one.")
+    
+    # TAB 5: CODE STUDIO
+    with tab5:
+        st.subheader("AI Code Studio")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            language = st.selectbox(
+                "Programming Language",
+                ["Python", "JavaScript", "Java", "C++", "TypeScript", "SQL", "Go", "Rust"],
+                index=0
+            )
+            
+            task_type = st.selectbox(
+                "Task Type",
+                ["Write Code", "Debug Code", "Explain Code", "Optimize Code", "Learn Concept"],
+                index=0
+            )
+        
+        with col2:
+            complexity = st.select_slider(
+                "Complexity Level",
+                options=["Beginner", "Intermediate", "Advanced", "Expert"],
+                value="Intermediate"
+            )
+            
+            include_tests = st.checkbox("Include Tests", value=True)
+            include_comments = st.checkbox("Include Comments", value=True)
+        
+        # Code input
+        code_input = st.text_area(
+            "Describe your code task or paste your code:",
+            height=150,
+            placeholder="e.g., 'Create a Python function to validate email addresses...'"
+        )
+        
+        if code_input and st.button("Generate Code", type="primary"):
+            llm = ModelRegistry.get_model()
+            
+            if not llm:
+                st.error("Please configure API keys")
+                st.stop()
+            
+            with st.spinner("Coding..."):
+                try:
+                    # Create coding prompt
+                    prompt = f"""You are an expert {language} developer. {task_type}.
+
+                    Requirements:
+                    - Language: {language}
+                    - Complexity: {complexity}
+                    - Include tests: {include_tests}
+                    - Include comments: {include_comments}
+                    
+                    Task: {code_input}
+                    
+                    Provide:
+                    1. Complete, runnable code
+                    2. Clear explanation of how it works
+                    3. {f"Test cases" if include_tests else "Usage examples"}
+                    4. Best practices applied
+                    
+                    Format with proper code blocks."""
+                    
+                    # Generate code
+                    code_prompt = ChatPromptTemplate.from_messages([
+                        ("system", f"You are an expert {language} developer."),
+                        ("human", "{query}")
+                    ])
+                    
+                    chain = code_prompt | llm | StrOutputParser()
+                    response = chain.invoke({"query": prompt})
+                    
+                    # Display response
+                    st.code(response, language=language.lower())
+                    
+                    # Store in history
+                    st.session_state.code_history.append({
+                        'language': language,
+                        'task': task_type,
+                        'input': code_input,
+                        'output': response,
+                        'timestamp': datetime.now().isoformat()
+                    })
+                    
+                except Exception as e:
+                    st.error(f"Error generating code: {str(e)}")
+        
+        # Code history
+        if st.session_state.code_history:
+            st.divider()
+            st.subheader("Code History")
+            
+            for i, item in enumerate(reversed(st.session_state.code_history[-3:])):
+                with st.expander(f"{item['language']} - {item['task']}"):
+                    st.write("**Your Request:**")
+                    st.write(item['input'][:200] + "..." if len(item['input']) > 200 else item['input'])
+                    st.write("**Generated Code:**")
+                    st.code(item['output'][:500] + "..." if len(item['output']) > 500 else item['output'], 
+                           language=item['language'].lower())
+    
+    # TAB 6: ANALYTICS
+    with tab6:
+        st.subheader("System Analytics")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.subheader("Chat Metrics")
+            chat_df = pd.DataFrame(st.session_state.conversation_history)
+            if not chat_df.empty:
+                st.metric("Total Messages", len(chat_df))
+                st.metric("User Messages", len(chat_df[chat_df['role'] == 'user']))
+                st.metric("Avg Response Length", 
+                         chat_df[chat_df['role'] == 'assistant']['content'].str.len().mean() if len(chat_df[chat_df['role'] == 'assistant']) > 0 else 0)
+            else:
+                st.info("No chat data")
+        
+        with col2:
+            st.subheader("RAG Metrics")
+            if st.session_state.rag_metrics:
+                for key, value in st.session_state.rag_metrics.items():
+                    if key != 'processed_at':
+                        st.metric(key.replace('_', ' ').title(), value)
+            else:
+                st.info("No RAG metrics")
+        
+        with col3:
+            st.subheader("System Health")
+            st.metric("Active Sessions", 1)
+            st.metric("Memory Usage", "Low")
+            st.metric("API Status", "✅" if ModelRegistry.get_available_models() else "⚠️")
+        
+        # Visualizations
+        st.divider()
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Chat timeline
+            if len(st.session_state.conversation_history) > 0:
+                st.subheader("Chat Activity")
+                chat_times = [msg.get('timestamp', datetime.now().isoformat()) 
+                             for msg in st.session_state.conversation_history]
+                
+                if chat_times:
+                    time_df = pd.DataFrame({
+                        'time': pd.to_datetime(chat_times),
+                        'count': 1
+                    })
+                    time_df = time_df.set_index('time').resample('5min').count().fillna(0)
+                    
+                    fig = px.line(time_df, x=time_df.index, y='count', 
+                                 labels={'time': 'Time', 'count': 'Messages'},
+                                 title="Messages Over Time")
+                    st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            # Knowledge Graph Visualization
+            if len(st.session_state.knowledge_graph.nodes()) > 0:
+                st.subheader("Knowledge Graph")
+                fig = kg_manager.visualize_graph()
+                if fig:
+                    st.plotly_chart(fig, use_container_width=True)
+
+# ============================================================================
+# RUN THE APPLICATION
+# ============================================================================
+if __name__ == "__main__":
+    main()
